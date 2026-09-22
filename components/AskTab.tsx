@@ -51,7 +51,7 @@ export default function AskTab({ slug }: AskTabProps) {
 
   return (
     <div>
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={question}
@@ -62,7 +62,7 @@ export default function AskTab({ slug }: AskTabProps) {
         <button
           type="submit"
           disabled={loading || !question.trim()}
-          className="rounded-full bg-ink px-6 py-3 text-[15px] font-medium text-white transition disabled:opacity-40"
+          className="w-full rounded-full bg-ink px-6 py-3 text-[15px] font-medium text-white transition disabled:opacity-40 sm:w-auto"
         >
           {loading ? "Asking..." : "Ask"}
         </button>

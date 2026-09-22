@@ -81,11 +81,26 @@
 }
 
 .prose-content table {
-  width: 100%;
+  /* min-width (not width): on mobile the table can grow past the viewport and
+     scroll horizontally inside its wrapper (see MarkdownContent.tsx) instead
+     of squeezing every column down to an unreadable width. */
+  min-width: 100%;
+  width: max-content;
+  max-width: 100%;
   border-collapse: collapse;
   margin-top: 1em;
   margin-bottom: 1em;
   font-size: 0.9375rem;
+}
+
+@media (max-width: 640px) {
+  .prose-content table {
+    max-width: none;
+  }
+  .prose-content td,
+  .prose-content th {
+    min-width: 9rem;
+  }
 }
 
 .prose-content th,

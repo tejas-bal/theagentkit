@@ -55,7 +55,7 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
         JSON.
       </p>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           value={query}
@@ -66,7 +66,7 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
         <button
           type="submit"
           disabled={loading || !query.trim()}
-          className="rounded-full bg-ink px-6 py-3 text-[15px] font-medium text-white transition disabled:opacity-40"
+          className="w-full rounded-full bg-ink px-6 py-3 text-[15px] font-medium text-white transition disabled:opacity-40 sm:w-auto"
         >
           {loading ? "Searching..." : "Search"}
         </button>
@@ -81,7 +81,7 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
           {results.length === 0 && <p className="text-muted">No matching documents found.</p>}
           {results.map((r) => (
             <div key={r.id} className="rounded-2xl bg-paper p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-semibold text-ink">{r.name}</p>
                 <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-ink/70">
                   score {r.score.toFixed(3)}

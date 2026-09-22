@@ -51,12 +51,12 @@ export default function ProjectTabs({
   return (
     <div>
       <div className="sticky top-11 z-40 border-t border-white/10 bg-[#2c2c2e]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-8 px-6 sm:gap-12">
+        <div className="mx-auto flex max-w-6xl gap-6 overflow-x-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center sm:gap-12 [&::-webkit-scrollbar]:hidden">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => selectTab(tab.id)}
-              className="flex flex-col items-center gap-1.5 py-3.5"
+              className="flex shrink-0 flex-col items-center gap-1.5 py-3.5"
             >
               <span
                 className={`text-[13px] font-normal tracking-wide transition-colors sm:text-sm ${
@@ -77,7 +77,7 @@ export default function ProjectTabs({
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-6 py-16">
+      <div className="mx-auto max-w-3xl px-6 py-10 sm:py-16">
         {activeTab === "use-case" && <MarkdownContent content={useCase} />}
         {activeTab === "data-collection" && <MarkdownContent content={dataCollection} />}
         {activeTab === "ai-agent" &&
