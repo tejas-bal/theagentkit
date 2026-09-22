@@ -77,10 +77,12 @@ markdown in `content.yaml`.
 ### The RAG tab (raw retrieval)
 
 Same index, no LLM: the **RAG** tab is a plain search box over the vector database
-itself — embeds the query, does a similarity search, and returns the top 2 matching
-documents as-is (name, similarity score, full text). No Groq call, so it also works
-without `GROQ_API_KEY` set. Useful for seeing what retrieval alone surfaces, separate
-from the AI Agent tab's generated answer.
+itself — embeds the query, does a similarity search, and returns the top 2 matches with
+both representations vectra stores per item: the short natural-language summary that
+was actually embedded (what the similarity score is measuring), and the full original
+source record collapsed underneath for citation. No Groq call, so it also works without
+`GROQ_API_KEY` set. Useful for seeing what retrieval alone surfaces, separate from the
+AI Agent tab's generated answer.
 
 To build a project's index (see `<project>/rag/` for the exact scripts — currently
 Node.js, using transformers.js for embeddings):

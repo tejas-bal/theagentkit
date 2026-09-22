@@ -67,13 +67,14 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
             <p className="mt-1 leading-relaxed">
               Each raw record in{" "}
               <code className="rounded bg-white px-1.5 py-0.5 text-xs">output/*.json</code> is
-              turned into a document with two separate representations: a short 3–4 sentence
-              natural-language summary used only as the embedding input, and the full,
-              unmodified original record kept as metadata for retrieval. Embedding the raw JSON
-              directly was tried first and measurably hurt retrieval — the model is trained on
-              English sentences, not JSON syntax, and every record shared identical structural
-              keys that ate into the embedding&apos;s fixed token budget without differentiating
-              anything.
+              turned into a document with two separate representations, both stored in the
+              index: a short 3–4 sentence natural-language summary used as the embedding
+              input (and shown below as each result&apos;s matched text), and the full,
+              unmodified original record kept alongside it for citation. Embedding the raw
+              JSON directly was tried first and measurably hurt retrieval — the model is
+              trained on English sentences, not JSON syntax, and every record shared
+              identical structural keys that ate into the embedding&apos;s fixed token
+              budget without differentiating anything.
             </p>
           </div>
 
@@ -99,9 +100,11 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
             <p className="font-medium text-ink">3. Vector store</p>
             <p className="mt-1 leading-relaxed">
               <code className="rounded bg-white px-1.5 py-0.5 text-xs">vectra</code>, a small
-              file-backed local vector index (no external vector DB or hosted service). It&apos;s
-              built once offline via a{" "}
-              <code className="rounded bg-white px-1.5 py-0.5 text-xs">buildIndex.js</code>{" "}
+              file-backed local vector index (no external vector DB or hosted service). Each
+              stored item holds the embedding vector plus both text representations as
+              metadata — vectra&apos;s metadata values have to be plain strings, so the full
+              record is JSON-serialized and parsed back out on read. Built once offline via
+              a <code className="rounded bg-white px-1.5 py-0.5 text-xs">buildIndex.js</code>{" "}
               script (resumable — already-embedded records are skipped on rerun) and the
               resulting index files are committed to the repo, so the deployed app only ever
               reads from it.
