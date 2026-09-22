@@ -1,0 +1,88 @@
+slug: uk-parliament-project
+title: UK Parliament Constituency Data
+tagline: All 650 UK parliamentary constituencies, collected from Parliament's public API.
+tags:
+  - data-collection
+  - python
+  - public-api
+
+useCase: |
+  ## Use Case
+
+  A structured, queryable dataset of every UK parliamentary constituency —
+  current MP, party, region, and 2024 general election result — for anything
+  that needs to look this up programmatically instead of clicking through
+  `members.parliament.uk` by hand: dashboards, chatbots, analysis notebooks,
+  or an AI agent answering questions like "who's the MP for Aldershot?".
+
+  The source site (`members.parliament.uk`) is a JS frontend behind Cloudflare
+  bot protection, so it can't be treated as a data source directly. This
+  project instead goes to the public API that powers it and restructures the
+  response into one clean, self-contained JSON record per constituency.
+
+dataCollection: |
+  ## Data Collection
+
+  `members.parliament.uk` blocks direct HTML scraping — every request without
+  a real browser gets a `403 Forbidden` with a Cloudflare JS challenge. The
+  site turned out to be a frontend for a public, unauthenticated JSON API at
+  `members-api.parliament.uk`, which has no bot protection and returns the
+  same underlying data in structured form. That API is the actual data
+  source here.
+
+  **Base URL:** `https://members-api.parliament.uk/api/Location/Constituency`
+
+  | Purpose | Endpoint | Notes |
+  |---|---|---|
+  | List all constituencies | `GET /Search?searchText=&skip={n}&take={n}` | Paginated. `totalResults` gives the total (650). Each item's `value.id` is the numeric constituency code, e.g. `4496`. |
+  | Overview | `GET /{id}` | Name, dates, current MP, party, membership history. |
+  | Synopsis | `GET /{id}/Synopsis` | One-line summary, e.g. *"Aberafan Maesteg is a constituency in Wales. The seat has been held by Stephen Kinnock (Labour) since July 2024."* HTML-stripped into a plain-text `location` field. |
+  | Election history | `GET /{id}/ElectionResults` | Result, electorate, turnout, majority, winning party. Boundaries changed in July 2024, so this currently holds just the 2024 general election per constituency — same as the live site. |
+  | Boundary geometry | `GET /{id}/Geometry` | GeoJSON `MultiPolygon`. Fetched during collection, deliberately excluded from the final output (large, not needed downstream). |
+
+  No API key required.
+
+  **Collection script:** [`scripts/generate_uk_constituencies.mjs`](scripts/generate_uk_constituencies.mjs)
+
+  ```bash
+  node scripts/generate_uk_constituencies.mjs
+  ```
+
+  No dependencies — Node's built-in `fetch`. Paginates through `/Search`, then
+  fetches `overview` + `Synopsis` + `ElectionResults` for all 650
+  constituencies (8 concurrent, one constituency's 3 requests done
+  sequentially — parallelizing those too tripped the API's rate limiting),
+  retries with backoff, and writes a single JSON **array**
+  (`output/uk_constituencies.json`) — one object per constituency, so it can
+  be iterated or bulk-imported into whatever downstream store or app needs
+  it without any further reshaping.
+
+aiAgent: ""
+
+interviewQuestions:
+  - q: "The target site returned 403 for every scraping attempt. How did you find a way around that?"
+    a: >
+      Checked the response headers and got a Cloudflare "challenge" response, confirming
+      bot protection rather than a real block on the data. Since the site clearly fetched
+      its own data from somewhere, I looked for the underlying API it calls client-side
+      and found members-api.parliament.uk — a separate, unauthenticated JSON API with no
+      bot protection, serving the same data in structured form. Scraping HTML was never
+      necessary once that was found.
+  - q: "Why does election_history only contain one election per constituency?"
+    a: >
+      UK constituency boundaries changed in July 2024, and each constituency's numeric
+      code is tied to its current boundary. Since these codes only exist from the 2024
+      general election onward, there's no prior election data attached to them yet — this
+      matches what the live site itself shows, it's not a gap in collection.
+  - q: "Why exclude the boundary geometry (GeoJSON) from the final dataset?"
+    a: >
+      It was fetched during collection but is large relative to the rest of the record
+      and wasn't needed by anything downstream (the lookup use case this dataset serves).
+      Keeping it out kept the dataset an order of magnitude smaller without losing any
+      data actually being used.
+  - q: "How would you re-run this if Parliament changes the API?"
+    a: >
+      The collection script isolates all API-shape assumptions in a couple of small
+      functions (fetch_all_constituencies, fetch_constituency_detail) that call fixed
+      endpoints and pull out specific fields — a shape change would only require editing
+      those functions, not the pagination/concurrency/retry logic around them.
