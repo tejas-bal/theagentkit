@@ -58,7 +58,7 @@ async function main() {
 
   for (const r of results) {
     console.log(`[${r.score.toFixed(4)}] ${r.name} (id=${r.id})`);
-    console.log(`  ${r.text}\n`);
+    console.log(JSON.stringify(r.entry, null, 2), "\n");
   }
 }
 

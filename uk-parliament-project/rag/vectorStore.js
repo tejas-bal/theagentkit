@@ -3,7 +3,11 @@
  * DB/service, just a JSON file on disk (one folder per index) that's loaded into
  * memory and searched by cosine similarity. Persistence, similarity search, and
  * metadata storage are all handled by the library -- this is a thin wrapper that
- * adapts it to the {id, name, text, embedding} shape the rest of this pipeline uses.
+ * adapts it to the {id, name, json, embedding} shape the rest of this pipeline uses.
+ *
+ * vectra's metadata values must be primitives (string/number/boolean), so the full
+ * record is kept as its JSON-serialized string and parsed back out on search --
+ * still the exact original object, round-tripped losslessly.
  */
 import { LocalIndex } from "vectra";
 
@@ -25,14 +29,14 @@ export class VectorStore {
     return new Set(items.map((item) => item.id));
   }
 
-  /** Add records: [{ id, name, text, embedding }, ...]. Persists immediately. */
+  /** Add records: [{ id, name, json, embedding }, ...]. Persists immediately. */
   async add(records) {
     await this._ensureCreated();
     await this.index.batchInsertItems(
       records.map((r) => ({
         id: String(r.id),
         vector: r.embedding,
-        metadata: { name: r.name, text: r.text },
+        metadata: { name: r.name, json: r.json },
       }))
     );
   }
@@ -43,7 +47,7 @@ export class VectorStore {
     return results.map((r) => ({
       id: r.item.id,
       name: r.item.metadata.name,
-      text: r.item.metadata.text,
+      entry: JSON.parse(r.item.metadata.json),
       score: r.score,
     }));
   }

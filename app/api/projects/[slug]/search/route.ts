@@ -4,11 +4,13 @@ import path from "node:path";
 import { getProjectBySlug } from "@/lib/projects";
 import { embedQuery } from "@/lib/rag/embeddings";
 import { searchIndex } from "@/lib/rag/vectorStore";
-import { generateAnswer } from "@/lib/rag/groq";
 
 // transformers.js needs native ONNX Runtime bindings, not available on the Edge runtime.
 export const runtime = "nodejs";
 
+// Retrieval only -- no LLM call, no Groq dependency. Returns the raw top-matching
+// documents from the vector store so the RAG tab can show what retrieval alone
+// surfaces, separate from the AI Agent tab's full retrieve-then-generate answer.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -21,29 +23,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   }
 
   const body = await req.json().catch(() => null);
-  const question = body?.question;
+  const query = body?.query;
 
-  if (typeof question !== "string" || question.trim() === "") {
-    return NextResponse.json({ error: "Missing 'question'" }, { status: 400 });
+  if (typeof query !== "string" || query.trim() === "") {
+    return NextResponse.json({ error: "Missing 'query'" }, { status: 400 });
   }
 
   const indexFolder = path.join(process.cwd(), project.dir, "rag", "index");
 
   try {
-    const queryEmbedding = await embedQuery(question);
-    const results = await searchIndex(indexFolder, queryEmbedding, 5);
-
-    if (results.length === 0) {
-      return NextResponse.json({ error: "No relevant results found" }, { status: 404 });
-    }
-
-    const context = results.map((r) => `[${r.name}]\n${JSON.stringify(r.entry)}`).join("\n\n");
-    const answer = await generateAnswer(question, context);
-
-    return NextResponse.json({
-      answer,
-      sources: results.map((r) => ({ id: r.id, name: r.name, score: r.score })),
-    });
+    const queryEmbedding = await embedQuery(query);
+    const results = await searchIndex(indexFolder, queryEmbedding, 2);
+    return NextResponse.json({ results });
   } catch (err) {
     console.error(err);
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -58,31 +58,3 @@ dataCollection: |
   it without any further reshaping.
 
 aiAgent: ""
-
-interviewQuestions:
-  - q: "The target site returned 403 for every scraping attempt. How did you find a way around that?"
-    a: >
-      Checked the response headers and got a Cloudflare "challenge" response, confirming
-      bot protection rather than a real block on the data. Since the site clearly fetched
-      its own data from somewhere, I looked for the underlying API it calls client-side
-      and found members-api.parliament.uk — a separate, unauthenticated JSON API with no
-      bot protection, serving the same data in structured form. Scraping HTML was never
-      necessary once that was found.
-  - q: "Why does election_history only contain one election per constituency?"
-    a: >
-      UK constituency boundaries changed in July 2024, and each constituency's numeric
-      code is tied to its current boundary. Since these codes only exist from the 2024
-      general election onward, there's no prior election data attached to them yet — this
-      matches what the live site itself shows, it's not a gap in collection.
-  - q: "Why exclude the boundary geometry (GeoJSON) from the final dataset?"
-    a: >
-      It was fetched during collection but is large relative to the rest of the record
-      and wasn't needed by anything downstream (the lookup use case this dataset serves).
-      Keeping it out kept the dataset an order of magnitude smaller without losing any
-      data actually being used.
-  - q: "How would you re-run this if Parliament changes the API?"
-    a: >
-      The collection script isolates all API-shape assumptions in a couple of small
-      functions (fetch_all_constituencies, fetch_constituency_detail) that call fixed
-      endpoints and pull out specific fields — a shape change would only require editing
-      those functions, not the pagination/concurrency/retry logic around them.

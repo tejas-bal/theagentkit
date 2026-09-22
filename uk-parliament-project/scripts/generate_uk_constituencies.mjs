@@ -11,8 +11,10 @@
  *   - synopsis -> GET /api/Location/Constituency/{id}/Synopsis
  *   - election history -> GET /api/Location/Constituency/{id}/ElectionResults
  *
- * `location` is derived from the synopsis text with HTML tags stripped
- * (this is the same line shown on the site's .../location page).
+ * `location` is derived from the synopsis text with HTML tags stripped (this is
+ * the same line shown on the site's .../location page). The raw synopsis text
+ * itself isn't kept in the output -- it's the same content as `location`, just
+ * with the HTML tag still in it, so storing both duplicated the same data.
  *
  * Output is a JSON array (one object per constituency, each with a top-level
  * "id" field).
@@ -123,6 +125,81 @@ async function fetchAllConstituencies() {
   return items;
 }
 
+// Strips fields with no informational value for this dataset, verified against
+// all 650 records before removing anything:
+//   - duplicates of a value already present elsewhere (overview.id/name dupe
+//     the top-level id/name; membershipFrom(Id) and constituencyName dupe the
+//     same; isIndependentParty dupes what latestParty.name already says)
+//   - constant across every record (overview.startDate/endDate; house=1;
+//     the entire membershipStatus block; isNotional; candidates=[])
+//   - REST/API plumbing with no semantic content (links, thumbnailUrl,
+//     numeric ids, hex colour codes)
+//   - off-topic for a Commons constituency dataset (Lords-related party flags)
+//   - opaque internal codes with no attached meaning here (governmentType,
+//     electionId)
+// Kept despite looking similar: membershipStartDate is NOT a duplicate of
+// electionDate -- it's the MP's first-ever election date, which differs from
+// the 2024 election date in 296/650 records (i.e. most MPs weren't new in 2024).
+function cleanParty(party) {
+  if (!party) return party;
+  delete party.id;
+  delete party.backgroundColour;
+  delete party.foregroundColour;
+  delete party.isLordsMainParty;
+  delete party.isLordsSpiritualParty;
+  delete party.governmentType;
+  delete party.isIndependentParty;
+  return party;
+}
+
+function cleanOverview(overviewValue) {
+  if (!overviewValue) return overviewValue;
+  delete overviewValue.id;
+  delete overviewValue.name;
+  delete overviewValue.startDate;
+  delete overviewValue.endDate;
+
+  const cr = overviewValue.currentRepresentation;
+  if (cr) {
+    delete cr.representation;
+    const memberValue = cr.member?.value;
+    if (memberValue) {
+      delete memberValue.id;
+      delete memberValue.nameListAs;
+      delete memberValue.nameDisplayAs;
+      delete memberValue.nameAddressAs;
+      delete memberValue.thumbnailUrl;
+      cleanParty(memberValue.latestParty);
+
+      const hm = memberValue.latestHouseMembership;
+      if (hm) {
+        delete hm.membershipFrom;
+        delete hm.membershipFromId;
+        delete hm.house;
+        delete hm.membershipEndDate;
+        delete hm.membershipEndReason;
+        delete hm.membershipEndReasonNotes;
+        delete hm.membershipEndReasonId;
+        delete hm.membershipStatus;
+      }
+    }
+    delete cr.member?.links;
+  }
+  return overviewValue;
+}
+
+function cleanElectionHistory(electionHistory) {
+  if (!electionHistory) return electionHistory;
+  for (const e of electionHistory) {
+    delete e.isNotional;
+    delete e.electionId;
+    delete e.constituencyName;
+    delete e.candidates;
+    cleanParty(e.winningParty);
+  }
+  return electionHistory;
+}
+
 async function fetchConstituencyDetail(cid) {
   // Sequential, not Promise.all: this runs inside an 8-way concurrent worker
   // pool (see CONCURRENCY below), so fetching all 3 endpoints in parallel per
@@ -135,14 +212,16 @@ async function fetchConstituencyDetail(cid) {
   const synopsisText = synopsis ? synopsis.value : null;
   const overviewValue = overview ? overview.value : null;
 
+  const name = overviewValue ? overviewValue.name : null;
+
   return {
     id: String(cid),
-    type: "constituency",
-    name: overviewValue ? overviewValue.name : null,
-    overview: overviewValue,
-    synopsis: synopsisText,
+    name,
+    overview: cleanOverview(overviewValue),
+    // No separate `synopsis` field -- it's the same text as `location` with HTML
+    // tags still in it, so keeping both duplicated the same content.
     location: stripHtml(synopsisText),
-    election_history: electionResults ? electionResults.value : null,
+    election_history: cleanElectionHistory(electionResults ? electionResults.value : null),
   };
 }
 

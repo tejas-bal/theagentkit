@@ -53,7 +53,6 @@ export default async function ProjectPage({
         useCase={project.useCase}
         dataCollection={project.dataCollection}
         aiAgent={project.aiAgent}
-        interviewQuestions={project.interviewQuestions}
         hasRagIndex={project.hasRagIndex}
       />
     </div>

@@ -46,21 +46,107 @@ A **JSON array**, one object per constituency
 ```json
 [
   {
-    "id": "4496",
-    "type": "constituency",
-    "name": "Aberafan Maesteg",
-    "overview": { "...": "raw overview payload from the API, incl. current MP/party" },
-    "synopsis": "Aberafan Maesteg is a constituency in <a href='/region/country/Wales'>Wales</a>. The seat has been held by Stephen Kinnock (Labour) since July 2024.",
-    "location": "Aberafan Maesteg is a constituency in Wales. The seat has been held by Stephen Kinnock (Labour) since July 2024.",
-    "election_history": [ { "result": "Lab Hold", "electorate": 72580, "turnout": 35755, "majority": 10354, "winningParty": { "...": "..." }, "electionTitle": "2024 General Election", "electionDate": "2024-07-04T00:00:00", "...": "..." } ]
+    "id": "3878",
+    "name": "Aldershot",
+    "overview": {
+      "currentRepresentation": {
+        "member": {
+          "value": {
+            "nameFullTitle": "Alex Baker MP",
+            "latestParty": { "name": "Labour", "abbreviation": "Lab" },
+            "gender": "F",
+            "latestHouseMembership": { "membershipStartDate": "2024-07-04T00:00:00" }
+          }
+        }
+      }
+    },
+    "location": "Aldershot is a constituency in the South East region of England. The seat has been held by Alex Baker (Labour) since July 2024.",
+    "election_history": [
+      {
+        "result": "Lab Gain",
+        "electorate": 78553,
+        "turnout": 48544,
+        "majority": 5683,
+        "winningParty": { "name": "Labour", "abbreviation": "Lab" },
+        "electionTitle": "2024 General Election",
+        "electionDate": "2024-07-04T00:00:00",
+        "isGeneralElection": true
+      }
+    ]
   }
 ]
 ```
 
 Field notes:
-- `id` — the constituency's numeric code as a string (e.g. `"4496"`)
-- `location` — plain-text version of `synopsis` with the HTML tag stripped (this is the
-  descriptive line shown on the site's `/location` page — the boundary map/geometry
-  itself is not included in the output).
+- `id` — the constituency's numeric code as a string (e.g. `"3878"`)
+- `location` — plain-text version of the API's synopsis text with HTML tags stripped
+  (the descriptive line shown on the site's `/location` page — the boundary map/geometry
+  itself is not included in the output; no separate `synopsis` field either, since it
+  was the same text as `location` with the HTML tag still in it)
+- `overview` and `election_history` are trimmed versions of the raw API response — see
+  **Data cleaning** below for what was removed and why
 
 Result file: [`output/uk_constituencies.json`](output/uk_constituencies.json) — 650 entries.
+
+## Data cleaning
+
+[`rag/`](rag/) embeds each constituency record as-is (see the root
+[README's AI Agent/RAG sections](../README.md#the-ai-agent-tab-live-rag)) rather than
+hand-writing a summary of it — no post-processing, one JSON object per record. That
+choice ran straight into a real constraint: the embedding model needs to actually fit
+the whole record in its context window, or it silently truncates whatever doesn't fit
+— and the raw API response is large enough that it wouldn't.
+
+**The problem, concretely:** the raw API response for a single constituency
+(`overview` + `election_history`) serializes to ~2,300–2,500 characters. Most local,
+CPU-friendly embedding models — including the one this project ended up using — cap
+out around **256 tokens** (~1,000 characters) per input; anything past that gets cut
+off before the model ever sees it. A field order where the biggest, noisiest part
+(`overview`, full of internal IDs and REST metadata) comes before the shortest,
+most informative part (`location`, `election_history`) makes this worse: truncation
+was cutting off *before* reaching the fields that actually distinguish one
+constituency from another.
+
+**What got removed**, verified field-by-field against all 650 records (not just one
+example) before deleting anything:
+
+| Category | Examples | Why |
+|---|---|---|
+| Duplicates of a value already present elsewhere | `overview.id`/`name`, `membershipFrom(Id)`, `constituencyName` | Same value as the top-level `id`/`name` in every record — checked, 0 mismatches across 650 |
+| Constant across every record | `overview.startDate`/`endDate`, `house`, the whole `membershipStatus` block, `isNotional`, `candidates: []` | Same value in all 650 records (checked via distribution counts) — zero discriminative signal for search |
+| Pure API/REST plumbing | `links`, `thumbnailUrl`, numeric internal `id`s | Navigation metadata / an image URL — no textual meaning |
+| Off-topic for this dataset | `isLordsMainParty`, `isLordsSpiritualParty` | About the House of *Lords*; this is a Commons constituency dataset |
+| Opaque codes with no attached meaning here | `governmentType`, `electionId` | Internal enum values with no lookup table in this data |
+| Visual-only | `backgroundColour`, `foregroundColour` | Hex colour codes — meaningless to a text embedding model |
+
+**What was deliberately kept despite looking similar**, because it turned out not to
+be a duplicate: `membershipStartDate` looks like it should match the most recent
+`electionDate`, but checking it against all 650 records showed **296 of them differ**
+— it's the MP's first-ever election date (sometimes years earlier, in a
+differently-shaped predecessor seat), not the 2024 election date. Also kept:
+`isGeneralElection`, which looked constant from a couple of samples but is actually
+`false` for 6/650 records (by-elections) — real signal, not noise.
+
+Net effect: **~71% smaller** per record (Aldershot: 2,359 → 692 characters), which
+brought the *median* record comfortably under the 256-token budget — though the
+largest few records (longer names, more election detail) still sit right at the edge
+(~261 estimated tokens), so a handful can still be trimmed by a token or two.
+
+**How this shaped the model choice:** an 8,192-token model (`nomic-embed-text-v1.5`)
+would have sidestepped the whole truncation problem, and was tried — but it's a ~137M
+parameter model that used **7.4GB of RAM** in this environment and made the index
+build unusably slow, so it was reverted. The dataset ended up using
+**`Xenova/all-MiniLM-L6-v2`** (22M params, 256-token limit, the original choice) —
+i.e. the cleaning effort above exists specifically *because* the practical model for
+this project's resource constraints has a small context window; trimming the data was
+the lever that was actually available.
+
+**Where this leaves retrieval quality:** cleaning measurably helped broad/topical
+queries (e.g. "which constituencies are in Wales?" now reliably returns Welsh seats),
+but precise name lookups (e.g. "who is the MP for Aldershot?") are still often not the
+top match. That's a model/format ceiling, not a noise problem: MiniLM is trained on
+natural English sentences, and every document here still shares identical JSON
+structural tokens (`"latestParty"`, `"electionTitle"`, etc.) that consume part of the
+fixed token budget without differentiating anything, diluting the signal from the one
+or two tokens that actually vary between records (the names). Accepted as a known
+limitation for now rather than reshaping the data into prose to work around it.

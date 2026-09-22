@@ -15,11 +15,6 @@ const IGNORED_DIRS = new Set([
   "public",
 ]);
 
-export interface InterviewQuestion {
-  q: string;
-  a: string;
-}
-
 export interface ProjectContent {
   slug: string;
   dir: string;
@@ -29,7 +24,6 @@ export interface ProjectContent {
   useCase: string;
   dataCollection: string;
   aiAgent: string;
-  interviewQuestions: InterviewQuestion[];
   hasRagIndex: boolean;
 }
 
@@ -53,7 +47,6 @@ function readProjectContent(dirName: string): ProjectContent | null {
     useCase: parsed.useCase ?? "",
     dataCollection: parsed.dataCollection ?? "",
     aiAgent: parsed.aiAgent ?? "",
-    interviewQuestions: parsed.interviewQuestions ?? [],
     hasRagIndex: fs.existsSync(ragIndexPath),
   };
 }

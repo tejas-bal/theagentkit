@@ -1,7 +1,7 @@
 # theagentkit
 
 A Next.js showcase site for data-collection + AI-agent projects — for each project: the
-use case, how the data was collected, a live AI Agent tab, and interview prep.
+use case, how the data was collected, a live AI Agent tab, and a raw RAG search tab.
 
 ## Running locally
 
@@ -59,9 +59,6 @@ dataCollection: |
 aiAgent: |
   ## AI Agent
   Fallback text shown if the project has no RAG index (see below).
-interviewQuestions:
-  - q: "A question"
-    a: "Its answer"
 ```
 
 The catalog page and `/projects/<slug>` route pick it up automatically — no app code
@@ -76,6 +73,14 @@ shows a live Q&A box instead of static text: the question is embedded locally
 in-memory/file-backed vector store), and the retrieved context + question are sent to
 Groq to generate the answer. Projects without an index fall back to the `aiAgent`
 markdown in `content.yaml`.
+
+### The RAG tab (raw retrieval)
+
+Same index, no LLM: the **RAG** tab is a plain search box over the vector database
+itself — embeds the query, does a similarity search, and returns the top 2 matching
+documents as-is (name, similarity score, full text). No Groq call, so it also works
+without `GROQ_API_KEY` set. Useful for seeing what retrieval alone surfaces, separate
+from the AI Agent tab's generated answer.
 
 To build a project's index (see `<project>/rag/` for the exact scripts — currently
 Node.js, using transformers.js for embeddings):
