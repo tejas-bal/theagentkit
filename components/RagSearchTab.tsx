@@ -5,6 +5,7 @@ import { useState } from "react";
 interface SearchResult {
   id: string;
   name: string;
+  text: string;
   entry: unknown;
   score: number;
 }
@@ -50,9 +51,9 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
   return (
     <div>
       <p className="mb-6 text-sm text-muted">
-        Searches the vector database directly — no LLM involved, no summarization: the
-        raw top 2 closest documents by embedding similarity, unmodified from the source
-        JSON.
+        Searches the vector database directly — no LLM involved: the top 2 closest
+        documents by embedding similarity, shown as the exact text that was stored and
+        embedded for each match, plus the full source record it came from.
       </p>
 
       <details className="mb-8 rounded-2xl bg-paper p-6 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
@@ -154,9 +155,16 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
                   score {r.score.toFixed(3)}
                 </span>
               </div>
-              <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-4 text-xs leading-relaxed text-ink/80">
-                {JSON.stringify(r.entry, null, 2)}
-              </pre>
+              <p className="mt-3 text-[15px] leading-relaxed text-ink/80">{r.text}</p>
+
+              <details className="mt-3">
+                <summary className="cursor-pointer select-none text-xs font-medium text-muted">
+                  View full source record
+                </summary>
+                <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-4 text-xs leading-relaxed text-ink/80">
+                  {JSON.stringify(r.entry, null, 2)}
+                </pre>
+              </details>
             </div>
           ))}
         </div>
