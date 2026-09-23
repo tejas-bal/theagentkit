@@ -3,7 +3,17 @@
  * external API. Must match the model used to build the index
  * (uk-parliament-project/rag/embeddings.js) or scores will be meaningless.
  */
-import { pipeline } from "@huggingface/transformers";
+import os from "node:os";
+import path from "node:path";
+import { env, pipeline } from "@huggingface/transformers";
+
+// transformers.js caches downloaded model files next to its own install
+// (node_modules/@huggingface/transformers/.cache) by default. On Vercel the
+// deployed function's filesystem is read-only apart from /tmp, so the first
+// download fails with EROFS -- point the cache at the OS temp dir there.
+if (process.env.VERCEL) {
+  env.cacheDir = path.join(os.tmpdir(), "transformers-cache");
+}
 
 const MODEL_NAME = process.env.EMBEDDING_MODEL ?? "Xenova/all-MiniLM-L6-v2";
 

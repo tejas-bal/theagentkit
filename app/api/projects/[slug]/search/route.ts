@@ -7,6 +7,9 @@ import { searchIndex } from "@/lib/rag/vectorStore";
 
 // transformers.js needs native ONNX Runtime bindings, not available on the Edge runtime.
 export const runtime = "nodejs";
+// A cold start loads ONNX Runtime and downloads the embedding model before the
+// first query, which can outlast a short default function timeout.
+export const maxDuration = 60;
 
 // Retrieval only -- no LLM call, no Groq dependency. Returns the raw top-matching
 // documents from the vector store so the RAG tab can show what retrieval alone

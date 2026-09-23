@@ -8,6 +8,9 @@ import { generateAnswer } from "@/lib/rag/groq";
 
 // transformers.js needs native ONNX Runtime bindings, not available on the Edge runtime.
 export const runtime = "nodejs";
+// A cold start loads ONNX Runtime and downloads the embedding model before the
+// first query, which can outlast a short default function timeout.
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

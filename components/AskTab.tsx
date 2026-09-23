@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { postJson } from "@/lib/postJson";
 
 interface Source {
   id: string;
@@ -29,16 +30,7 @@ export default function AskTab({ slug }: AskTabProps) {
     setSources([]);
 
     try {
-      const res = await fetch(`/api/projects/${slug}/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error ?? `Request failed (${res.status})`);
-      }
+      const data = await postJson<{ answer: string; sources?: Source[] }>(`/api/projects/${slug}/ask`, { question });
 
       setAnswer(data.answer);
       setSources(data.sources ?? []);

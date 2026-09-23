@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { postJson } from "@/lib/postJson";
 
 interface SearchResult {
   id: string;
@@ -29,16 +30,7 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
     setResults(null);
 
     try {
-      const res = await fetch(`/api/projects/${slug}/search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error ?? `Request failed (${res.status})`);
-      }
+      const data = await postJson<{ results?: SearchResult[] }>(`/api/projects/${slug}/search`, { query });
 
       setResults(data.results ?? []);
     } catch (err) {
