@@ -9,6 +9,17 @@ interface Source {
   score: number;
 }
 
+type Row = Record<string, string | number>;
+
+interface Meta {
+  intent: "deterministic" | "probabilistic";
+  reason: string;
+  rows: Row[];
+  totalRows: number;
+}
+
+const PREVIEW_ROWS = 10;
+
 interface AskTabProps {
   slug: string;
 }
@@ -19,6 +30,7 @@ export default function AskTab({ slug }: AskTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [meta, setMeta] = useState<Meta | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,12 +40,22 @@ export default function AskTab({ slug }: AskTabProps) {
     setError(null);
     setAnswer(null);
     setSources([]);
+    setMeta(null);
 
     try {
-      const data = await postJson<{ answer: string; sources?: Source[] }>(`/api/projects/${slug}/ask`, { question });
+      const data = await postJson<{ answer: string; sources?: Source[] } & Partial<Meta>>(
+        `/api/projects/${slug}/ask`,
+        { question }
+      );
 
       setAnswer(data.answer);
       setSources(data.sources ?? []);
+      setMeta({
+        intent: data.intent ?? "probabilistic",
+        reason: data.reason ?? "",
+        rows: data.rows ?? [],
+        totalRows: data.totalRows ?? 0,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -66,7 +88,55 @@ export default function AskTab({ slug }: AskTabProps) {
 
       {answer && (
         <div className="mt-8">
+          {meta && (
+            <p className="mb-3 text-xs text-muted">
+              <span
+                className={`mr-2 rounded-full px-2.5 py-0.5 font-medium ${
+                  meta.intent === "deterministic" ? "bg-accent/10 text-accent" : "bg-paper text-ink/70"
+                }`}
+              >
+                {meta.intent === "deterministic" ? "Deterministic" : "Probabilistic"}
+              </span>
+              {meta.intent === "deterministic"
+                ? "Answered directly from the data, no AI involved."
+                : "Retrieved context summarised by an LLM."}{" "}
+              {meta.reason && <span className="text-muted/80">Routed because {meta.reason}.</span>}
+            </p>
+          )}
           <p className="whitespace-pre-wrap text-[17px] leading-relaxed text-ink">{answer}</p>
+
+          {meta && meta.rows.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm font-medium text-muted">
+                Matching rows
+                {meta.totalRows > PREVIEW_ROWS && ` (showing ${PREVIEW_ROWS} of ${meta.totalRows.toLocaleString("en-GB")})`}
+              </p>
+              <div className="mt-2 overflow-x-auto rounded-2xl bg-paper">
+                <table className="min-w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-muted">
+                      {Object.keys(meta.rows[0]).map((h) => (
+                        <th key={h} className="whitespace-nowrap px-3 py-2 font-medium">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {meta.rows.slice(0, PREVIEW_ROWS).map((row, i) => (
+                      <tr key={i} className="border-t border-black/5 text-ink/80">
+                        {Object.values(row).map((v, j) => (
+                          <td key={j} className="whitespace-nowrap px-3 py-2">
+                            {typeof v === "number" ? v.toLocaleString("en-GB") : v}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {sources.length > 0 && (
             <div className="mt-6">

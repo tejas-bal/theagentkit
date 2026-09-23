@@ -12,7 +12,7 @@ Base URL: `https://members-api.parliament.uk/api/Location/Constituency`
 | List all constituencies | `GET /Search?searchText=&skip={n}&take={n}` | Paginated. `totalResults` in the response gives the total count (650). Each item's `value.id` is the numeric constituency code (e.g. `4496`). |
 | Overview (≈ `/overview` page) | `GET /{id}` | Constituency name, dates, current MP, party, membership history. |
 | Synopsis (≈ text on `/overview` and `/location` pages) | `GET /{id}/Synopsis` | One-line summary, e.g. *"Aberafan Maesteg is a constituency in Wales. The seat has been held by Stephen Kinnock (Labour) since July 2024."* Returned with an embedded `<a href='/region/country/...'>` tag around the country/region name — stripped to plain text for the `location` field below. |
-| Election history (≈ `/election-history` page) | `GET /{id}/ElectionResults` | Result, electorate, turnout, majority, winning party per election held under this constituency code. Since constituency boundaries changed in July 2024, this currently only contains the 2024 general election for every constituency — that matches what the live pages show too. |
+| Election history (≈ `/election-history` page) | `GET /{id}/ElectionResults` | Result, electorate, turnout, majority, winning party per election held under this constituency code. Since constituency boundaries changed in July 2024, every constituency has the 2024 general election, and six also have a later by-election (newest entry first) — that matches what the live pages show too. |
 | Boundary geometry (≈ map on `/location` page) | `GET /{id}/Geometry` | GeoJSON `MultiPolygon`. **Fetched during initial collection but deliberately excluded from the final output** (large, and not needed downstream). |
 
 No API key or authentication is required for any of these endpoints.
@@ -90,12 +90,13 @@ Result file: [`output/uk_constituencies.json`](output/uk_constituencies.json) �
 
 ## Data cleaning
 
-[`rag/`](rag/) embeds each constituency record as-is (see the root
-[README's AI Agent/RAG sections](../README.md#the-ai-agent-tab-live-rag)) rather than
-hand-writing a summary of it — no post-processing, one JSON object per record. That
-choice ran straight into a real constraint: the embedding model needs to actually fit
-the whole record in its context window, or it silently truncates whatever doesn't fit
-— and the raw API response is large enough that it wouldn't.
+The first RAG design embedded each raw constituency record as-is (one JSON object per
+record, no post-processing). That ran straight into a real constraint: the embedding
+model needs to fit whatever it embeds in its context window, or it silently truncates
+the rest — and the raw API response is large enough that it wouldn't. This section is
+how the data was trimmed to deal with that, and what it did and didn't fix. The final
+design is described under **Where this ended up** below (see also the root
+[README's AI Agent/RAG sections](../README.md#the-ai-agent-tab-live-rag)).
 
 **The problem, concretely:** the raw API response for a single constituency
 (`overview` + `election_history`) serializes to ~2,300–2,500 characters. Most local,
@@ -141,12 +142,45 @@ i.e. the cleaning effort above exists specifically *because* the practical model
 this project's resource constraints has a small context window; trimming the data was
 the lever that was actually available.
 
-**Where this leaves retrieval quality:** cleaning measurably helped broad/topical
-queries (e.g. "which constituencies are in Wales?" now reliably returns Welsh seats),
-but precise name lookups (e.g. "who is the MP for Aldershot?") are still often not the
-top match. That's a model/format ceiling, not a noise problem: MiniLM is trained on
-natural English sentences, and every document here still shares identical JSON
-structural tokens (`"latestParty"`, `"electionTitle"`, etc.) that consume part of the
-fixed token budget without differentiating anything, diluting the signal from the one
-or two tokens that actually vary between records (the names). Accepted as a known
-limitation for now rather than reshaping the data into prose to work around it.
+**What cleaning fixed, and what it didn't** (embedding the cleaned JSON directly): broad
+queries improved ("which constituencies are in Wales?" started returning Welsh seats),
+but precise name lookups did not: "who is the MP for Aldershot?" still didn't return
+Aldershot in the top two (best score 0.38, wrong seat). That was a model/format
+mismatch, not a noise problem. MiniLM is trained on natural English sentences, and every
+JSON document still shared identical structural tokens (`"latestParty"`, `"electionTitle"`,
+...) that use up the fixed token budget without differentiating anything, drowning the
+one or two tokens that actually vary between records (the names).
+
+### Where this ended up
+
+`rag/documents.js` now gives each record two representations, and the cleaning above
+is what makes both work:
+
+- **`text`**, embedded: a 3-4 sentence natural-language summary built from the cleaned
+  fields (location and MP, election result, plus a by-election or MP-tenure sentence
+  when relevant). English prose is what the model was trained on.
+- **`json`**, stored and returned: the full cleaned record, unmodified. This is what
+  the AI Agent tab gives the LLM as context and what the RAG tab shows under "View full
+  source record", so nothing is lost on the read side.
+
+Result: "who is the MP for Aldershot?" returns Aldershot first (score 0.67), and the
+regional and party queries stay correct. Cleaning still matters, because it keeps the
+stored record and the LLM context small and free of REST plumbing, and it is what made
+the raw-JSON experiment viable enough to measure.
+
+## What reads this data directly
+
+Besides the vector index, `lib/intent/ukConstituencies.ts` answers counts, rankings and
+filters ("How many Labour MPs are there in Wales?") straight from
+`output/uk_constituencies.json`, with no LLM. It depends on three details of this file's
+shape, so a change to the collection script or the cleaning above should keep them intact:
+
+| Needs | Where it comes from | Why it's fragile |
+|---|---|---|
+| A seat's region and country | Parsed from the `location` sentence ("... is a constituency in Wales." / "... in the South East region of England." / "... in London, England.") | There is no dedicated region field. If the API rewords that sentence, region and country filters silently stop matching. |
+| Whether a seat changed hands | The `Gain` / `Hold` suffix of `election_history[].result` ("Lab Gain") | Encoded as text, not a boolean. |
+| General election vs by-election | `election_history[].isGeneralElection` | Six seats have a second, newer entry, so code must pick an election by date or flag, never assume one entry per seat. |
+
+Two data facts the answers rely on: "Labour" is stored as both `Labour` and
+`Labour (Co-op)` (same `Lab` abbreviation, so they are counted together), and one seat
+(Holborn and St Pancras) currently has no sitting MP, so it is excluded from MP counts.

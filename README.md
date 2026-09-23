@@ -12,15 +12,18 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The **AI Agent** tab does a live RAG (retrieval-augmented generation) call and needs a
+The **AI Agent** tab answers questions two ways (see
+[Deterministic vs probabilistic questions](#deterministic-vs-probabilistic-questions)).
+Exact questions like counts and rankings are answered straight from the data and need
+nothing. Open-ended ones do a live RAG (retrieval-augmented generation) call and need a
 Groq API key. Add to `.env.local` (gitignored):
 
 ```
 GROQ_API_KEY=gsk_...
 ```
 
-Without it, the AI Agent tab still embeds the question and retrieves matching context,
-but the final answer-generation call will fail with a clear error.
+Without it, deterministic questions still work; probabilistic ones still embed the
+question and retrieve context, but the answer-generation call fails with a clear error.
 
 ## How it's structured
 
@@ -28,10 +31,13 @@ The Next.js app lives at the repo root; each project is a self-contained sibling
 
 ```
 theagentkit/
-├── app/                          # catalog page, project detail page, RAG API route
-├── components/                   # ProjectTabs, AskTab, MarkdownContent
+├── app/
+│   ├── page.tsx, projects/[slug]/ # catalog page and the tabbed project page
+│   └── api/projects/[slug]/       # ask (AI Agent tab) and search (RAG tab) routes
+├── components/                   # ProjectTabs, AskTab, RagSearchTab, MarkdownContent
 ├── lib/
 │   ├── projects.ts                # scans the repo for project folders (content.yaml)
+│   ├── intent/                    # question routing: classifier, direct JSON queries, plain-text sanitizer
 │   └── rag/                       # query-time RAG: embed question, search index, call Groq
 └── uk-parliament-project/         # one project
     ├── README.md                   # human-facing doc
@@ -74,6 +80,36 @@ in-memory/file-backed vector store), and the retrieved context + question are se
 Groq to generate the answer. Projects without an index fall back to the `aiAgent`
 markdown in `content.yaml`.
 
+#### Deterministic vs probabilistic questions
+
+Not every question needs an LLM. Before retrieval, `lib/intent/classifier.ts` routes each
+question (a rule-based classifier: instant, free, and itself deterministic):
+
+| Intent | What it covers | How it's answered |
+|---|---|---|
+| **Deterministic** | Counts, rankings, filters: "How many Labour MPs are there in Wales?", "Which seats changed hands at the last general election?", "Which constituencies had the smallest majorities?", "Which MPs got elected in 2025?" | Queried straight from `output/uk_constituencies.json` in `lib/intent/ukConstituencies.ts`. Exact and repeatable: no embedding, no retrieval, no LLM, no API key needed. Returns a sentence plus the matching rows as evidence. |
+| **Probabilistic** | Vague or descriptive questions: "Tell me about the MP for a seat near Birmingham.", "Who is the MP for Aldershot?", anything with "near", "why", "describe" | Retrieval + Groq, as above. |
+
+The direct-query layer is currently built for the UK constituencies dataset only. A
+project without an `output/uk_constituencies.json` skips the classifier and sends every
+question down the probabilistic path.
+
+Anything the rules don't positively recognise falls through to probabilistic, so a
+classifier miss costs answer quality, never correctness. Party and place names are read
+from the dataset itself (plus a small alias table: "Tory", "Lib Dems", ...), and the tab
+shows which path answered and why. To support a new question shape, add a kind to
+`DeterministicKind`, a detection rule in `classifyIntent`, and an executor in
+`ukConstituencies.ts`.
+
+Two data quirks the deterministic answers handle: "Labour" is stored as both "Labour" and
+"Labour (Co-op)" (counted together, with the Co-op share called out), and "smallest
+majorities" uses each seat's most recent election, so a 2025 by-election can top the list.
+
+**No markdown in LLM answers.** Probabilistic answers are plain sentences. The system
+prompt forbids markdown, and `lib/intent/plainText.ts` strips any that slips through
+anyway (the model did return `**bold**` before this), so the UI never shows literal
+asterisks or pound signs.
+
 ### The RAG tab (raw retrieval)
 
 Same index, no LLM: the **RAG** tab is a plain search box over the vector database
@@ -97,5 +133,11 @@ node buildIndex.js
 
 Built for Vercel: push to a connected repo and it deploys with zero extra config
 (Next.js is auto-detected). Set `GROQ_API_KEY` as an environment variable in the Vercel
-project settings — the AI Agent tab's API route runs on the Node.js runtime (not Edge),
-since local embeddings need native bindings.
+project settings (only probabilistic answers use it). The API routes run on the Node.js
+runtime (not Edge), since local embeddings need native bindings.
+
+`next.config.ts` marks the ONNX/transformers.js packages as external and explicitly
+traces two things Vercel's file tracer can't discover on its own: the Linux x64 ONNX
+runtime binaries (without them the route fails with `Cannot find module
+'onnxruntime-node'`), and `output/uk_constituencies.json`, which the deterministic path
+reads at runtime.
