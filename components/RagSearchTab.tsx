@@ -135,12 +135,12 @@ export default function RagSearchTab({ slug, exampleQuestions = [] }: RagSearchT
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search the vector database..."
-          className="flex-1 rounded-full border border-black/10 bg-white px-5 py-3 text-[15px] outline-none focus:border-accent"
+          className="flex-1 rounded-full border border-black/10 bg-white px-5 py-3 text-[17px] outline-none focus:border-accent"
         />
         <button
           type="submit"
           disabled={loading || !query.trim()}
-          className="w-full rounded-full bg-ink px-6 py-3 text-[15px] font-medium text-white transition disabled:opacity-40 sm:w-auto"
+          className="w-full rounded-full bg-ink px-6 py-3 text-[17px] font-medium text-white transition disabled:opacity-40 sm:w-auto"
         >
           {loading ? "Searching..." : "Search"}
         </button>
@@ -149,7 +149,7 @@ export default function RagSearchTab({ slug, exampleQuestions = [] }: RagSearchT
       <ExampleQuestions questions={exampleQuestions} disabled={loading} onSelect={handleExample} />
 
       {error && (
-        <p className="mt-6 rounded-2xl bg-red-50 p-4 text-[15px] text-red-700">{error}</p>
+        <p className="mt-6 rounded-2xl bg-red-50 p-4 text-[17px] text-red-700">{error}</p>
       )}
 
       {results && (
@@ -163,7 +163,7 @@ export default function RagSearchTab({ slug, exampleQuestions = [] }: RagSearchT
                   score {r.score.toFixed(3)}
                 </span>
               </div>
-              <p className="mt-3 text-[15px] leading-relaxed text-ink/80">{r.text}</p>
+              <p className="mt-3 text-[17px] leading-relaxed text-ink/80">{r.text}</p>
 
               <details className="mt-3">
                 <summary className="cursor-pointer select-none text-xs font-medium text-muted">

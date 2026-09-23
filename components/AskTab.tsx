@@ -82,12 +82,12 @@ export default function AskTab({ slug, exampleQuestions = [] }: AskTabProps) {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask a question about this dataset..."
-          className="flex-1 rounded-full border border-black/10 bg-white px-5 py-3 text-[15px] outline-none focus:border-accent"
+          className="flex-1 rounded-full border border-black/10 bg-white px-5 py-3 text-[17px] outline-none focus:border-accent"
         />
         <button
           type="submit"
           disabled={loading || !question.trim()}
-          className="w-full rounded-full bg-ink px-6 py-3 text-[15px] font-medium text-white transition disabled:opacity-40 sm:w-auto"
+          className="w-full rounded-full bg-ink px-6 py-3 text-[17px] font-medium text-white transition disabled:opacity-40 sm:w-auto"
         >
           {loading ? "Asking..." : "Ask"}
         </button>
@@ -96,7 +96,7 @@ export default function AskTab({ slug, exampleQuestions = [] }: AskTabProps) {
       <ExampleQuestions questions={exampleQuestions} disabled={loading} onSelect={handleExample} />
 
       {error && (
-        <p className="mt-6 rounded-2xl bg-red-50 p-4 text-[15px] text-red-700">{error}</p>
+        <p className="mt-6 rounded-2xl bg-red-50 p-4 text-[17px] text-red-700">{error}</p>
       )}
 
       {answer && (
@@ -116,7 +116,7 @@ export default function AskTab({ slug, exampleQuestions = [] }: AskTabProps) {
               {meta.reason && <span className="text-muted/80">Routed because {meta.reason}.</span>}
             </p>
           )}
-          <p className="whitespace-pre-wrap text-[17px] leading-relaxed text-ink">{answer}</p>
+          <p className="whitespace-pre-wrap text-[19px] leading-relaxed text-ink">{answer}</p>
 
           {meta && meta.rows.length > 0 && (
             <div className="mt-6">

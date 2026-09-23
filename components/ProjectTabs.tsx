@@ -61,7 +61,7 @@ export default function ProjectTabs({
               className="flex shrink-0 flex-col items-center gap-1.5 py-3.5"
             >
               <span
-                className={`text-[13px] font-normal tracking-wide transition-colors sm:text-sm ${
+                className={`text-[15px] font-normal tracking-wide transition-colors sm:text-sm ${
                   activeTab === tab.id
                     ? "text-white"
                     : "text-white/60 hover:text-white/90"

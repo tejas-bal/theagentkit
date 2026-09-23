@@ -35,7 +35,7 @@ export default function HomePage() {
                 <h2 className="text-2xl font-semibold tracking-tight text-ink">
                   {project.title}
                 </h2>
-                <p className="mt-2 text-[15px] leading-relaxed text-muted">
+                <p className="mt-2 text-[17px] leading-relaxed text-muted">
                   {project.tagline}
                 </p>
                 {project.tags.length > 0 && (
@@ -50,7 +50,7 @@ export default function HomePage() {
                     ))}
                   </div>
                 )}
-                <span className="mt-6 inline-flex items-center gap-1 text-[15px] font-medium text-accent">
+                <span className="mt-6 inline-flex items-center gap-1 text-[17px] font-medium text-accent">
                   Learn more
                   <span className="transition-transform duration-300 group-hover:translate-x-1">
                     →

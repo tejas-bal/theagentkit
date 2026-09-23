@@ -19,7 +19,7 @@ export default function ExampleQuestions({ questions, disabled, onSelect }: Exam
             type="button"
             disabled={disabled}
             onClick={() => onSelect(q)}
-            className="rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-left text-[13px] text-ink/80 transition hover:border-accent hover:text-accent disabled:opacity-40"
+            className="rounded-full border border-black/10 bg-white px-3.5 py-1.5 text-left text-[15px] text-ink/80 transition hover:border-accent hover:text-accent disabled:opacity-40"
           >
             {q}
           </button>
