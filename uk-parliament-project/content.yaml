@@ -9,16 +9,57 @@ tags:
 useCase: |
   ## Use Case
 
-  A structured, queryable dataset of every UK parliamentary constituency —
-  current MP, party, region, and 2024 general election result — for anything
-  that needs to look this up programmatically instead of clicking through
-  `members.parliament.uk` by hand: dashboards, chatbots, analysis notebooks,
-  or an AI agent answering questions like "who's the MP for Aldershot?".
+  ### The problem
 
-  The source site (`members.parliament.uk`) is a JS frontend behind Cloudflare
-  bot protection, so it can't be treated as a data source directly. This
-  project instead goes to the public API that powers it and restructures the
-  response into one clean, self-contained JSON record per constituency.
+  Finding information about Members of Parliament today means using
+  `members.parliament.uk` the traditional way. You type a name, constituency
+  or postcode into a search bar, open a profile page, and put the answer
+  together yourself. That works for a single lookup like *"who is the MP for
+  Aldershot?"*. It doesn't work for the questions people actually ask:
+
+  - *Which MPs got elected in 2025?*
+  - *How many Labour MPs are there in Wales?*
+  - *Which seats changed hands at the last general election?*
+  - *Which constituencies had the smallest majorities?*
+  - *Tell me about the MP for a seat near Birmingham.*
+
+  None of these fit a keyword search box. Each one needs filtering,
+  counting or comparing across all 650 constituencies, or understanding
+  what the user meant.
+
+  ### The goal
+
+  Ask about MPs in natural language and get a correct answer, instead of
+  searching and clicking through profiles.
+
+  ### Approach: deterministic + probabilistic
+
+  Questions about MPs come in two kinds, and each kind needs a different
+  way of answering:
+
+  | | Deterministic | Probabilistic |
+  |---|---|---|
+  | **What it is** | Exact queries over structured fields: filter, count, sort, aggregate | Semantic search (RAG) over text, with an LLM writing the answer |
+  | **Good for** | *"Which MPs got elected in 2025?"*, *"How many Conservative MPs are there?"*, *"Top 10 smallest majorities"* | *"Tell me about the MP for Aldershot"*, *"Who represents the South East?"*, vague or badly spelled questions |
+  | **Strength** | Exact, complete and repeatable, with no made-up answers | Handles fuzzy wording, synonyms and open-ended questions |
+  | **Weakness** | Needs the question mapped onto known fields | May miss records or give only part of a list, so it can't be trusted for "all" or "how many" |
+
+  An LLM on its own is poor at *"list every MP elected in 2025"*. Vector
+  search returns the top-k most similar documents, not every match, so the
+  list can come back incomplete. A fixed query can't handle open-ended or
+  misspelled questions. This project combines the two. The agent works out
+  what kind of question it has been asked. Precise questions go to
+  structured queries over the dataset. Descriptive or fuzzy questions go
+  to RAG over the constituency documents.
+
+  ### The data underneath
+
+  Both approaches read from the same dataset: one structured record per
+  constituency, covering all 650. Each record has the current MP, their
+  party, the date they became an MP, the region, and the latest general
+  election result (electorate, turnout, majority, and whether the seat was
+  held or gained). The *Data Collection* tab explains how it was gathered.
+  The *RAG* tab shows the probabilistic side on its own.
 
 dataCollection: |
   ## Data Collection
