@@ -6,3 +6,7 @@ next-env.d.ts
 .vercel
 __pycache__/
 .env*.local
+
+# collector checkpoint (resume data for an interrupted run)
+*.partial.json
+*.partial.json.tmp

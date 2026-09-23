@@ -29,15 +29,29 @@ No dependencies — uses Node's built-in `fetch`.
 
 - Fetches the full constituency list via `/Search` (paginating in batches of 20).
 - For each of the 650 constituencies, fetches `overview`, `Synopsis`, and
-  `ElectionResults` (sequentially per constituency, 8 constituencies concurrently —
-  fetching a constituency's 3 endpoints in parallel would triple the effective
-  concurrent request count and trip the API's rate limiting; confirmed by hitting a
-  ~52-minute Cloudflare cooldown, `Retry-After: 3123`, after briefly running at that
-  higher concurrency), retries with backoff on failure. A `Retry-After` over 15s is
-  treated as a punitive ban rather than a normal throttle and fails that request
-  immediately instead of waiting it out.
+  `ElectionResults`: 8 constituencies in flight at once, but every request goes through
+  **one shared rate limit** (`REQUESTS_PER_SECOND`, default 5, so about 6 to 7 minutes
+  for the ~1,950 requests).
 - Writes `output/<outputBasename>.json` (default basename: `uk_constituencies`).
-- Takes a few minutes (~1,950 HTTP requests total).
+
+### Why it paces itself (and what to do if it stops)
+
+The API sits behind Cloudflare, which answers a burst with a per-IP "error 1015" ban.
+The `Retry-After` on it is close to an hour (seen: 3,123s, then 3,406s), and requests sent
+while banned appear to extend it (it went *up* between checks). A Node script is fast
+enough to trip this easily, and an earlier version of this script made it worse in
+three ways, all fixed:
+
+| Problem | Fix |
+|---|---|
+| Rate was set by worker count, not by time, so it ran far faster than the API tolerates | One global limit shared by all workers |
+| Once banned, it failed that URL and moved on, sending the other ~1,900 requests at a blocked IP within seconds (and re-arming the ban each run) | A circuit breaker: the first ban-length `Retry-After` stops the whole run, and no further request is sent |
+| A failed request was silently saved as a record full of `null`s, and the script still exited 0 | A constituency that can't be fetched in full is never written; it is retried on the next run |
+
+Progress is saved to `output/<name>.partial.json`, so a re-run resumes instead of
+starting over. Exit codes: `0` done, `1` some constituencies failed (re-run to retry just
+those), `2` rate limited. On `2` it prints how long to wait and roughly when; **don't
+re-run sooner**, since that can extend the ban. To go slower, e.g. `REQUESTS_PER_SECOND=3`.
 
 ### Output format
 
