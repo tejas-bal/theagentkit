@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAllProjects, getProjectBySlug } from "@/lib/projects";
@@ -7,6 +8,27 @@ const REPO_URL = "https://github.com/tejas-bal/theagentkit";
 
 export function generateStaticParams() {
   return getAllProjects().map((project) => ({ slug: project.slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const project = getProjectBySlug(slug);
+  if (!project) return {};
+
+  const url = `/projects/${project.slug}`;
+  return {
+    title: project.title,
+    description: project.tagline,
+    alternates: { canonical: url },
+    // Setting openGraph/twitter here replaces the inherited objects, so the
+    // root preview card (app/opengraph-image.tsx) has to be re-attached.
+    openGraph: { type: "article", url, title: project.title, description: project.tagline, images: ["/opengraph-image"] },
+    twitter: { card: "summary_large_image", title: project.title, description: project.tagline, images: ["/opengraph-image"] },
+  };
 }
 
 export default async function ProjectPage({

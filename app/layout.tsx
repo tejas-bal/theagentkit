@@ -2,9 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
+const SITE_URL = "https://www.theagentkit.info";
+const DESCRIPTION =
+  "Learning in public: real AI agent projects built end to end, from collecting the raw data to RAG and knowing when not to use an LLM. Try each one live.";
+
 export const metadata: Metadata = {
-  title: "theagentkit — project showcase",
-  description: "Data collection + AI agent projects, use cases, and interview prep.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "theagentkit: from raw data to AI-ready agents",
+    template: "%s | theagentkit",
+  },
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "theagentkit",
+    title: "theagentkit: from raw data to AI-ready agents",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "theagentkit: from raw data to AI-ready agents",
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
