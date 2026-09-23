@@ -54,6 +54,7 @@ export default async function ProjectPage({
         dataCollection={project.dataCollection}
         aiAgent={project.aiAgent}
         hasRagIndex={project.hasRagIndex}
+        exampleQuestions={project.exampleQuestions}
       />
     </div>
   );

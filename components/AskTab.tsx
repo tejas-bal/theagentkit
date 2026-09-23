@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { postJson } from "@/lib/postJson";
+import ExampleQuestions from "./ExampleQuestions";
 
 interface Source {
   id: string;
@@ -22,9 +23,10 @@ const PREVIEW_ROWS = 10;
 
 interface AskTabProps {
   slug: string;
+  exampleQuestions?: string[];
 }
 
-export default function AskTab({ slug }: AskTabProps) {
+export default function AskTab({ slug, exampleQuestions = [] }: AskTabProps) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +34,17 @@ export default function AskTab({ slug }: AskTabProps) {
   const [sources, setSources] = useState<Source[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    ask(question);
+  }
+
+  function handleExample(q: string) {
+    setQuestion(q);
+    ask(q);
+  }
+
+  async function ask(question: string) {
     if (!question.trim() || loading) return;
 
     setLoading(true);
@@ -81,6 +92,8 @@ export default function AskTab({ slug }: AskTabProps) {
           {loading ? "Asking..." : "Ask"}
         </button>
       </form>
+
+      <ExampleQuestions questions={exampleQuestions} disabled={loading} onSelect={handleExample} />
 
       {error && (
         <p className="mt-6 rounded-2xl bg-red-50 p-4 text-[15px] text-red-700">{error}</p>

@@ -25,6 +25,8 @@ export interface ProjectContent {
   dataCollection: string;
   aiAgent: string;
   hasRagIndex: boolean;
+  // Clickable sample prompts shown on the AI Agent and RAG tabs.
+  exampleQuestions: string[];
 }
 
 function readProjectContent(dirName: string): ProjectContent | null {
@@ -48,6 +50,7 @@ function readProjectContent(dirName: string): ProjectContent | null {
     dataCollection: parsed.dataCollection ?? "",
     aiAgent: parsed.aiAgent ?? "",
     hasRagIndex: fs.existsSync(ragIndexPath),
+    exampleQuestions: parsed.exampleQuestions ?? [],
   };
 }
 

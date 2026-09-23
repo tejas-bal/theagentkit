@@ -6,6 +6,12 @@ tags:
   - python
   - public-api
 
+exampleQuestions:
+  - Which MPs got elected in 2025?
+  - How many Labour MPs are there in Wales?
+  - Which seats changed hands at the last general election?
+  - Which constituencies had the smallest majorities?
+  - Tell me about the MP for a seat near Birmingham.
 useCase: |
   ## Use Case
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { postJson } from "@/lib/postJson";
+import ExampleQuestions from "./ExampleQuestions";
 
 interface SearchResult {
   id: string;
@@ -13,16 +14,26 @@ interface SearchResult {
 
 interface RagSearchTabProps {
   slug: string;
+  exampleQuestions?: string[];
 }
 
-export default function RagSearchTab({ slug }: RagSearchTabProps) {
+export default function RagSearchTab({ slug, exampleQuestions = [] }: RagSearchTabProps) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResult[] | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    search(query);
+  }
+
+  function handleExample(q: string) {
+    setQuery(q);
+    search(q);
+  }
+
+  async function search(query: string) {
     if (!query.trim() || loading) return;
 
     setLoading(true);
@@ -134,6 +145,8 @@ export default function RagSearchTab({ slug }: RagSearchTabProps) {
           {loading ? "Searching..." : "Search"}
         </button>
       </form>
+
+      <ExampleQuestions questions={exampleQuestions} disabled={loading} onSelect={handleExample} />
 
       {error && (
         <p className="mt-6 rounded-2xl bg-red-50 p-4 text-[15px] text-red-700">{error}</p>

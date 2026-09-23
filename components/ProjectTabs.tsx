@@ -20,6 +20,7 @@ interface ProjectTabsProps {
   dataCollection: string;
   aiAgent: string;
   hasRagIndex: boolean;
+  exampleQuestions: string[];
 }
 
 export default function ProjectTabs({
@@ -28,6 +29,7 @@ export default function ProjectTabs({
   dataCollection,
   aiAgent,
   hasRagIndex,
+  exampleQuestions,
 }: ProjectTabsProps) {
   // Default tab renders in the initial (server-rendered/static) HTML. The URL's
   // ?tab= param, if any, is only read after mount so tabs stay real static
@@ -81,10 +83,10 @@ export default function ProjectTabs({
         {activeTab === "use-case" && <MarkdownContent content={useCase} />}
         {activeTab === "data-collection" && <MarkdownContent content={dataCollection} />}
         {activeTab === "ai-agent" &&
-          (hasRagIndex ? <AskTab slug={slug} /> : <MarkdownContent content={aiAgent} />)}
+          (hasRagIndex ? <AskTab slug={slug} exampleQuestions={exampleQuestions} /> : <MarkdownContent content={aiAgent} />)}
         {activeTab === "rag" &&
           (hasRagIndex ? (
-            <RagSearchTab slug={slug} />
+            <RagSearchTab slug={slug} exampleQuestions={exampleQuestions} />
           ) : (
             <p className="text-muted">No search index available for this project yet.</p>
           ))}
